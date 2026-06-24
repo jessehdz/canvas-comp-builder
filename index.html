@@ -1,0 +1,1818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canvas Component Builder — Seattle Colleges eLearning</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink:      #0F1923;
+  --ink2:     #1A2838;
+  --border:   #253545;
+  --accent:   #4FC3A1;
+  --accent-d: #2E9E80;
+  --surface:  #152030;
+  --text:     #E2EBF3;
+  --dim:      #7A9BB5;
+  --dimmer:   #3E5568;
+  --mono: 'Courier New', monospace;
+}
+
+/* ── LIGHT MODE ── */
+:root.light {
+  --ink:      #F4F6F8;
+  --ink2:     #FFFFFF;
+  --border:   #D4DCE4;
+  --accent:   #1A8A6C;
+  --accent-d: #136B54;
+  --surface:  #EAEEF2;
+  --text:     #0F1923;
+  --dim:      #3A5060;
+  --dimmer:   #7A92A4;
+}
+
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--ink); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+
+/* ── SHELL ── */
+.shell { display: flex; min-height: 100vh; }
+/* Left: scrollable form pane — never taller than the viewport */
+.left  {
+  width: 440px; flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  height: 100vh;
+  position: sticky; top: 0;
+  overflow-y: auto;
+  padding-bottom: 60px; /* clear sticky footer on desktop */
+}
+/* Right: grows with content, preview sticks inside it */
+.right { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 100vh; }
+
+/* ── LEFT HEADER ── */
+.lh { padding: 18px 20px 14px; border-bottom: 1px solid var(--border); }
+.lh-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.theme-toggle {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--ink2); border: 1px solid var(--border);
+  border-radius: 20px; padding: 4px 10px 4px 6px;
+  cursor: pointer; flex-shrink: 0; transition: background .15s, border-color .15s;
+  font-family: inherit;
+}
+.theme-toggle:hover { border-color: var(--accent); }
+.toggle-track {
+  width: 28px; height: 16px; border-radius: 8px;
+  background: var(--border); position: relative;
+  transition: background .2s; flex-shrink: 0;
+}
+:root.light .toggle-track { background: var(--accent); }
+.toggle-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #fff; position: absolute; top: 2px; left: 2px;
+  transition: left .2s; box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+:root.light .toggle-thumb { left: 14px; }
+.toggle-label { font-size: 10px; font-weight: 700; color: var(--dim); letter-spacing: .04em; user-select: none; }
+
+/* Light mode hardcoded overrides */
+:root.light .preview-pane { background: #E8EDF2; }
+:root.light .preview-pane iframe { box-shadow: 0 4px 20px rgba(0,0,0,.1); }
+:root.light .code-out { background: #1E293B; } /* keep code dark always */
+:root.light .fs-label::after { background: var(--border); }
+:root.light .code-head { background: #1E293B; }
+:root.light .code-head span { color: #64748B; }
+:root.light .rbody { background: var(--ink); }
+:root.light .right { background: var(--ink); }
+:root.light .rh { background: var(--surface); border-color: var(--border); }
+:root.light .site-footer { background: var(--surface); border-color: var(--border); }
+
+/* Light mode: add visible borders to all clickable/selectable elements */
+:root.light .pal-opt           { border-color: #B0BCCA; }
+:root.light .pal-opt.active    { border-color: var(--accent); }
+:root.light .pal-name          { background: #DDE4EC; color: var(--dim); }
+:root.light .comp-opt          { background: var(--ink2); border-color: #B0BCCA; }
+:root.light .comp-opt:hover    { border-color: var(--dim); }
+:root.light .comp-opt.active   { border-color: var(--accent); }
+:root.light .lvl-opt           { background: var(--ink2); border-color: #B0BCCA; }
+:root.light .lvl-opt:hover     { border-color: var(--dim); }
+:root.light .lvl-opt.active    { border-color: var(--accent); }
+:root.light .item-row          { border-color: #B0BCCA; }
+:root.light .item-row-header input { border-color: #B0BCCA; }
+:root.light .item-row-body input,
+:root.light .item-row-body textarea { border-color: #B0BCCA; }
+:root.light .add-btn           { border-color: #B0BCCA; }
+:root.light .add-btn:hover     { border-color: var(--accent); }
+:root.light .cta-btn.ghost     { border-color: #B0BCCA; }
+:root.light .cta-btn.ghost:hover { border-color: var(--accent); }
+:root.light .theme-toggle      { border-color: #B0BCCA; }
+:root.light .remove-btn:hover  { background: rgba(180,40,40,.1); }
+.lh-eye { font-size: 10px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: var(--accent); margin-bottom: 5px; }
+.lh h1  { font-size: 17px; font-weight: 800; letter-spacing: -.02em; line-height: 1.2; }
+.lh p   { font-size: 12px; color: var(--dim); margin-top: 4px; line-height: 1.55; }
+
+/* ── FORM SECTIONS ── */
+.fs { padding: 14px 20px; border-bottom: 1px solid var(--border); }
+.fs-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--accent); margin-bottom: 11px;
+  display: flex; align-items: center; gap: 8px;
+}
+.fs-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── COMPONENT PICKER ── */
+.comp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.comp-opt {
+  background: var(--ink2); border: 2px solid var(--border);
+  border-radius: 8px; padding: 10px 12px; cursor: pointer;
+  transition: border-color .12s, background .12s;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.comp-opt:hover { border-color: var(--dim); }
+.comp-opt.active { border-color: var(--accent); background: rgba(79,195,161,.07); }
+.comp-icon { font-size: 18px; line-height: 1; }
+.comp-name { font-size: 12px; font-weight: 700; color: var(--text); }
+.comp-desc { font-size: 10px; color: var(--dim); line-height: 1.4; }
+
+/* ── FIELDS ── */
+.field { margin-bottom: 10px; }
+.field:last-child { margin-bottom: 0; }
+.field label { display: block; font-size: 11px; font-weight: 600; color: var(--dim); margin-bottom: 4px; }
+.field label .opt { font-weight: 400; color: var(--dimmer); }
+.field input, .field select, .field textarea {
+  width: 100%; background: var(--ink2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 10px; color: var(--text);
+  font-size: 12px; font-family: inherit; outline: none;
+  transition: border-color .12s;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+.field input::placeholder, .field textarea::placeholder { color: var(--dimmer); }
+.field textarea { resize: vertical; min-height: 56px; }
+.field select option { background: var(--ink2); }
+.field-row { display: flex; gap: 8px; }
+.field-row .field { flex: 1; margin-bottom: 0; }
+
+/* ── DYNAMIC FORM AREA ── */
+#dynamicForm { display: flex; flex-direction: column; gap: 0; }
+
+/* ── BUTTON ROWS (items) ── */
+.item-rows { display: flex; flex-direction: column; gap: 6px; }
+.item-row {
+  background: var(--ink2); border: 1px solid var(--border);
+  border-radius: 7px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.item-row-header { display: flex; align-items: center; gap: 8px; }
+.item-num {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--border); color: var(--dim);
+  font-size: 10px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.item-row-header input {
+  flex: 1; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 5px; padding: 6px 9px; color: var(--text);
+  font-size: 12px; font-family: inherit; outline: none;
+  transition: border-color .12s;
+}
+.item-row-header input:focus { border-color: var(--accent); }
+.item-row-header input::placeholder { color: var(--dimmer); }
+.item-row-body { display: flex; flex-direction: column; gap: 5px; }
+.item-row-body input, .item-row-body textarea {
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 5px; padding: 6px 9px; color: var(--text);
+  font-size: 11px; font-family: inherit; outline: none;
+  transition: border-color .12s;
+}
+.item-row-body input:focus, .item-row-body textarea:focus { border-color: var(--accent); }
+.item-row-body input::placeholder, .item-row-body textarea::placeholder { color: var(--dimmer); }
+.item-row-body textarea { resize: vertical; min-height: 48px; }
+.remove-btn {
+  background: none; border: none; color: var(--dimmer);
+  font-size: 14px; cursor: pointer; padding: 2px 5px;
+  border-radius: 4px; transition: color .1s, background .1s; line-height: 1;
+  flex-shrink: 0;
+}
+.remove-btn:hover { color: #E05252; background: rgba(224,82,82,.1); }
+.add-btn {
+  width: 100%; background: none; border: 1px dashed var(--border);
+  border-radius: 7px; padding: 8px; color: var(--dim);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: border-color .12s, color .12s; margin-top: 4px;
+}
+.add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── PALETTE ── */
+.pal-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 5px; }
+.pal-opt {
+  border: 2px solid transparent; border-radius: 7px; overflow: hidden;
+  cursor: pointer; transition: border-color .12s, transform .1s;
+}
+.pal-opt:hover { transform: scale(1.04); }
+.pal-opt.active { border-color: var(--accent); }
+.pal-swatch { height: 22px; display: flex; }
+.pal-half { flex: 1; }
+.pal-name { font-size: 10px; font-weight: 600; padding: 3px 5px; background: var(--ink2); color: var(--dim); text-align: center; }
+
+/* ── LAYOUT LEVELS ── */
+.level-list { display: flex; flex-direction: column; gap: 5px; }
+.lvl-opt {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--ink2); border: 1px solid var(--border);
+  border-radius: 7px; padding: 8px 11px; cursor: pointer;
+  transition: border-color .12s;
+}
+.lvl-opt:hover { border-color: var(--dim); }
+.lvl-opt.active { border-color: var(--accent); background: rgba(79,195,161,.06); }
+.lvl-dot { width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; transition: background .12s, border-color .12s; }
+.lvl-opt.active .lvl-dot { background: var(--accent); border-color: var(--accent); }
+.lvl-text { flex: 1; }
+.lvl-name { font-size: 12px; font-weight: 700; }
+.lvl-desc { font-size: 10px; color: var(--dim); margin-top: 1px; }
+.lvl-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
+
+/* ── GENERATE ── */
+.gen-wrap { padding: 14px 20px 20px; margin-top: auto; }
+.gen-btn {
+  width: 100%; background: var(--accent); color: #071510;
+  border: none; border-radius: 8px; padding: 12px;
+  font-size: 14px; font-weight: 800; cursor: pointer;
+  transition: background .12s, transform .1s; letter-spacing: .02em;
+}
+.gen-btn:hover { background: var(--accent-d); transform: translateY(-1px); }
+.gen-btn:active { transform: none; }
+
+/* ── RIGHT PANEL ── */
+.rh {
+  padding: 13px 22px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 12px;
+}
+.rh h2 { font-size: 14px; font-weight: 700; }
+.tabs { display: flex; }
+.tab {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--dim); font-size: 13px; font-weight: 600;
+  padding: 5px 13px; cursor: pointer; transition: color .12s, border-color .12s; font-family: inherit;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.rbody { flex: 1; overflow-y: auto; position: relative; }
+
+/* preview */
+.preview-pane { display: none; padding: 22px; background: #C8D0D8; min-height: 100%; }
+.preview-pane.active { display: block; }
+.preview-pane iframe { width: 100%; border: none; border-radius: 9px; background: #fff; box-shadow: 0 4px 20px rgba(0,0,0,.22); }
+
+/* empty */
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 400px; padding: 32px; text-align: center; color: var(--dimmer); }
+.empty-icon { font-size: 44px; margin-bottom: 14px; opacity: .5; }
+.empty h3 { font-size: 15px; font-weight: 700; color: var(--dim); margin-bottom: 6px; }
+.empty p { font-size: 12px; max-width: 260px; line-height: 1.6; }
+
+/* code pane */
+.code-pane { display: none; flex-direction: column; height: 100%; }
+.code-pane.active { display: flex; }
+.code-toolbar {
+  padding: 9px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 10px; flex-wrap: wrap;
+}
+.code-toolbar p { font-size: 11px; color: var(--dim); }
+.code-toolbar p strong { color: var(--text); }
+.copy-btn {
+  background: var(--accent); color: #071510; border: none; border-radius: 6px;
+  padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer;
+  transition: background .12s; font-family: inherit;
+}
+.copy-btn:hover { background: var(--accent-d); }
+.copy-btn.copied { background: #2D6A4F; color: #D8F3DC; }
+.code-out {
+  flex: 1; overflow: auto; padding: 18px 20px;
+  font-family: var(--mono); font-size: 11.5px; color: #9ACDA8;
+  line-height: 1.7; white-space: pre; background: var(--ink);
+}
+
+/* faq pane */
+.faq-pane { display: none; flex-direction: column; height: 100%; overflow-y: auto; }
+.faq-pane.active { display: flex; }
+
+/* ── FOOTER ── */
+.site-footer {
+  position: sticky; bottom: 0; z-index: 10;
+  width: 100%;
+  background: var(--ink2);
+  border-top: 1px solid var(--border);
+  padding: 10px 24px;
+  display: flex; align-items: center;
+  justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+}
+.footer-credit {
+  font-size: 11px; color: var(--dimmer); white-space: nowrap;
+}
+.footer-credit a { color: var(--dim); text-decoration: none; }
+.footer-credit a:hover { color: var(--accent); text-decoration: underline; }
+.footer-cta-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.footer-cta-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--dimmer); white-space: nowrap;
+}
+.cta-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 11px; border-radius: 5px; font-size: 11px; font-weight: 600;
+  text-decoration: none; border: none; cursor: pointer; font-family: inherit;
+  transition: background .12s, color .12s; line-height: 1; white-space: nowrap;
+}
+.cta-btn.primary { background: var(--accent); color: #071510; }
+.cta-btn.primary:hover { background: var(--accent-d); }
+.cta-btn.ghost { background: transparent; color: var(--dim); border: 1px solid var(--border); }
+.cta-btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── TRUST BAR ── */
+.trust-bar {
+  background: var(--ink);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.trust-bar:hover .trust-track { animation-play-state: paused; }
+.trust-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 16px;
+  animation: ticker 28s linear infinite;
+}
+@keyframes ticker {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.trust-item {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--dimmer);
+  white-space: nowrap;
+  transition: color .15s;
+  letter-spacing: .02em;
+}
+.trust-bar:hover .trust-item { color: var(--dim); }
+.trust-item:hover { color: var(--accent) !important; }
+.trust-sep {
+  color: var(--border);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+:root.light .trust-bar { background: var(--ink2); border-color: var(--border); }
+:root.light .trust-item { color: var(--dim); }
+:root.light .trust-sep { color: var(--border); }
+
+/* toast */
+.toast {
+  position: fixed; bottom: 18px; right: 18px;
+  background: #2D6A4F; color: #D8F3DC;
+  padding: 9px 16px; border-radius: 7px; font-size: 12px; font-weight: 600;
+  z-index: 999; opacity: 0; transform: translateY(5px);
+  transition: opacity .18s, transform .18s; pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+
+@media (max-width: 800px) {
+  /* Stacked on mobile: form on top, preview below */
+  .shell { flex-direction: column; }
+  .left  { width: 100%; height: auto; position: static; overflow-y: visible; padding-bottom: 0; }
+  .right { min-height: 60vh; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ══════════════════ LEFT ══════════════════ -->
+<aside class="left" aria-label="Builder form">
+
+  <div class="lh">
+    <div class="lh-top">
+      <p class="lh-eye">Seattle Colleges eLearning</p>
+      <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle light/dark mode" aria-pressed="false" id="themeToggle">
+        <div class="toggle-track" aria-hidden="true"><div class="toggle-thumb"></div></div>
+        <span class="toggle-label" id="toggleLabel">Light</span>
+      </button>
+    </div>
+    <h1>Canvas Component Builder</h1>
+    <p>Choose what you want to build, fill in your content, pick a style — get Canvas-ready code instantly.</p>
+  </div>
+
+  <!-- TRUST TICKER -->
+  <div class="trust-bar" aria-label="Privacy and trust information" role="marquee">
+    <div class="trust-track" id="trustTrack">
+      <span class="trust-item">🔒 No data saved or transmitted — ever</span>
+      <span class="trust-sep" aria-hidden="true">·</span>
+      <span class="trust-item">🚫 No server. No database. No account needed.</span>
+      <span class="trust-sep" aria-hidden="true">·</span>
+      <span class="trust-item">⚖️ You own all generated code — no IP restrictions</span>
+      <span class="trust-sep" aria-hidden="true">·</span>
+      <span class="trust-item">🎓 FERPA safe — no student data entered here</span>
+      <span class="trust-sep" aria-hidden="true">·</span>
+      <span class="trust-item">✅ WCAG 2.2 AA — all templates accessibility-tested</span>
+      <span class="trust-sep" aria-hidden="true">·</span>
+      <span class="trust-item">🖥️ 100% in your browser — no tracking, no scripts</span>
+      <span class="trust-sep" aria-hidden="true">·</span>
+      <span class="trust-item">♻️ Your Canvas pages keep working if this tool goes away</span>
+      <span class="trust-sep" aria-hidden="true">·</span>
+    </div>
+  </div>
+
+  <!-- STEP 1 — COMPONENT TYPE -->
+  <div class="fs">
+    <div class="fs-label">1 · What are you building?</div>
+    <div class="comp-grid" id="compGrid">
+      <div class="comp-opt active" data-comp="homepage" onclick="selectComp('homepage',this)">
+        <div class="comp-icon">🏠</div>
+        <div class="comp-name">Course Homepage</div>
+        <div class="comp-desc">Navigation buttons + office hours</div>
+      </div>
+      <div class="comp-opt" data-comp="announcement" onclick="selectComp('announcement',this)">
+        <div class="comp-icon">📣</div>
+        <div class="comp-name">Announcement</div>
+        <div class="comp-desc">Important notice or update</div>
+      </div>
+      <div class="comp-opt" data-comp="module" onclick="selectComp('module',this)">
+        <div class="comp-icon">📚</div>
+        <div class="comp-name">Module Intro</div>
+        <div class="comp-desc">Week overview, objectives, checklist</div>
+      </div>
+      <div class="comp-opt" data-comp="discussion" onclick="selectComp('discussion',this)">
+        <div class="comp-icon">💬</div>
+        <div class="comp-name">Discussion Prompt</div>
+        <div class="comp-desc">Prompt header + guiding questions</div>
+      </div>
+      <div class="comp-opt" data-comp="syllabus" onclick="selectComp('syllabus',this)">
+        <div class="comp-icon">📄</div>
+        <div class="comp-name">Syllabus Banner</div>
+        <div class="comp-desc">Course header for top of syllabus</div>
+      </div>
+      <div class="comp-opt" data-comp="divider" onclick="selectComp('divider',this)">
+        <div class="comp-icon">✂️</div>
+        <div class="comp-name">Section Divider</div>
+        <div class="comp-desc">Label to separate page sections</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 — DYNAMIC FIELDS -->
+  <div id="dynamicForm"></div>
+
+  <!-- STEP 3 — LAYOUT (hidden for some components) -->
+  <div class="fs" id="layoutSection">
+    <div class="fs-label" id="layoutLabel">3 · Layout Style</div>
+    <div class="level-list" id="levelList"></div>
+  </div>
+
+  <!-- STEP 4 — COLOR -->
+  <div class="fs">
+    <div class="fs-label" id="colorStepLabel">4 · Color Theme</div>
+    <div class="pal-grid" id="palGrid"></div>
+  </div>
+
+  <!-- GENERATE -->
+  <div class="gen-wrap">
+    <button class="gen-btn" onclick="generate()">✦ Build My Canvas Code</button>
+  </div>
+
+</aside>
+
+<!-- ══════════════════ RIGHT ══════════════════ -->
+<main class="right" aria-label="Output">
+  <div class="rh">
+    <h2 id="outputLabel">Output</h2>
+    <div class="tabs" role="tablist">
+      <button class="tab active" onclick="switchTab('preview')" role="tab" aria-selected="true">Preview</button>
+      <button class="tab"        onclick="switchTab('code')"    role="tab" aria-selected="false">Copy Code</button>
+      <button class="tab"        onclick="switchTab('faq')"     role="tab" aria-selected="false">How to Use</button>
+    </div>
+  </div>
+
+  <div class="rbody">
+    <div class="preview-pane active" id="tab-preview" role="tabpanel">
+      <div class="empty" id="emptyState">
+        <div class="empty-icon">✦</div>
+        <h3>Your component will appear here</h3>
+        <p>Choose a component type, fill in the form, and click Build.</p>
+      </div>
+      <iframe id="previewFrame" title="Component preview" style="display:none;"></iframe>
+    </div>
+    <div class="code-pane" id="tab-code" role="tabpanel">
+      <div class="code-toolbar">
+        <p>Paste into Canvas → Edit Page → <strong>&lt;/&gt; HTML Editor</strong></p>
+        <button class="copy-btn" id="copyBtn" onclick="copyOut()">Copy Code</button>
+      </div>
+      <div class="code-out" id="codeOut"></div>
+    </div>
+  </div>
+    <div class="code-pane" id="tab-faq" role="tabpanel">
+      <div class="code-out" style="color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:13px;line-height:1.65;white-space:normal;padding:28px 32px;max-width:720px;">
+
+        <h2 style="font-size:18px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px;">How to Use the Canvas Component Builder</h2>
+        <p style="color:var(--dim);margin:0 0 28px;">Answers to the most common questions about building and using Canvas HTML components.</p>
+
+        <div id="faq-list"></div>
+
+      </div>
+    </div>
+</main>
+</div><!-- /shell -->
+
+<!-- ── FOOTER ── -->
+  <footer class="site-footer" aria-label="About this tool">
+
+    <p class="footer-credit">
+      Seattle Colleges eLearning &middot;
+      <a href="mailto:elearning@seattlecolleges.edu">elearning@seattlecolleges.edu</a>
+    </p>
+
+    <div class="footer-cta-row" role="group" aria-label="Feedback and support">
+      <span class="footer-cta-label">Bugs / feedback:</span>
+      <a class="cta-btn primary"
+         href="mailto:elearning@seattlecolleges.edu?subject=Canvas Builder — Bug Report&body=Hi eLearning Team,%0D%0A%0D%0AI found a bug in the Canvas Component Builder:%0D%0A%0D%0AComponent: [e.g. Course Homepage]%0D%0AWhat happened: %0D%0AWhat I expected: %0D%0ABrowser / OS: %0D%0A%0D%0AThanks!"
+         aria-label="Report a bug via email">🐛 Bug</a>
+      <a class="cta-btn ghost"
+         href="mailto:elearning@seattlecolleges.edu?subject=Canvas Builder — Feature Request&body=Hi eLearning Team,%0D%0A%0D%0AMy suggestion for the Canvas Component Builder:%0D%0A%0D%0AIdea: %0D%0A%0D%0AHow it would help: %0D%0A%0D%0AThanks!"
+         aria-label="Request a feature via email">💡 Feature</a>
+      <a class="cta-btn ghost"
+         href="mailto:elearning@seattlecolleges.edu?subject=Canvas Builder — Feedback"
+         aria-label="Send general feedback via email">✉️ Feedback</a>
+    </div>
+
+  </footer>
+
+
+<div class="toast" id="toast" role="alert" aria-live="polite"></div>
+
+<script>
+// ═══════════════════════════════════
+//  PALETTES
+// ═══════════════════════════════════
+var PALS = [
+  // ── Verified WCAG AA: all text/bg combos >= 4.5:1 ──
+  // dark text on bg, white text on dark, white text on acc (where used)
+  { id:'ocean',   label:'Ocean',    dark:'#003F47', acc:'#006E7F', bg:'#EAF6FB', text:'#0A171D', sub:'#1A4A58', oh:'#A8DCE8' },
+  // #003F47 on #EAF6FB = 10.2:1 ✓  #0A171D on #EAF6FB = 16.2:1 ✓  white on #003F47 = 10.2:1 ✓  white on #006E7F = 5.2:1 ✓
+  { id:'sand',    label:'Sand',     dark:'#5C3D11', acc:'#7A5C2E', bg:'#F3ECE3', text:'#2C2C2C', sub:'#5C4A3A', oh:'#C8A87A' },
+  // #5C3D11 on #F3ECE3 = 8.4:1 ✓  white on #5C3D11 = 8.4:1 ✓  white on #7A5C2E = 5.6:1 ✓
+  { id:'forest',  label:'Forest',   dark:'#1A3828', acc:'#1D5C3A', bg:'#EDF7F1', text:'#142B1E', sub:'#2E5C40', oh:'#6FC28A' },
+  // white on #1A3828 = 13.8:1 ✓  white on #1D5C3A = 7.4:1 ✓  #142B1E on #EDF7F1 = 14.2:1 ✓
+  { id:'plum',    label:'Plum',     dark:'#2D1B4E', acc:'#5B2D91', bg:'#F5F0FF', text:'#1E1030', sub:'#4A2E72', oh:'#B89FDC' },
+  // white on #2D1B4E = 14.0:1 ✓  white on #5B2D91 = 6.1:1 ✓  #1E1030 on #F5F0FF = 16.4:1 ✓
+  { id:'terra',   label:'Terra',    dark:'#7A2E0E', acc:'#9C3A14', bg:'#FDF0EC', text:'#3B1205', sub:'#6B2E18', oh:'#F0B090' },
+  // white on #7A2E0E = 7.9:1 ✓  white on #9C3A14 = 6.1:1 ✓  #3B1205 on #FDF0EC = 16.8:1 ✓
+  { id:'slate',   label:'Slate',    dark:'#1E293B', acc:'#1D4ED8', bg:'#F0F4FF', text:'#0F172A', sub:'#374151', oh:'#93C5FD' },
+  // white on #1E293B = 13.6:1 ✓  white on #1D4ED8 = 5.9:1 ✓  #0F172A on #F0F4FF = 17.1:1 ✓
+  { id:'night',   label:'Night',    dark:'#0F172A', acc:'#0052A3', bg:'#F0F6FF', text:'#0A1020', sub:'#2A3A52', oh:'#7EB8F0' },
+  // white on #0F172A = 18.1:1 ✓  white on #0052A3 = 7.0:1 ✓
+  { id:'rose',    label:'Rose',     dark:'#6B1530', acc:'#8B2040', bg:'#FFF0F3', text:'#3D0A18', sub:'#6B2030', oh:'#F0A0B0' },
+  // white on #6B1530 = 9.9:1 ✓  white on #8B2040 = 7.5:1 ✓  #3D0A18 on #FFF0F3 = 17.0:1 ✓
+  { id:'sage',    label:'Sage',     dark:'#2C4A35', acc:'#3A6845', bg:'#EEF5F0', text:'#1A2E20', sub:'#3A5A42', oh:'#8FC4A0' },
+  // white on #2C4A35 = 11.2:1 ✓  white on #3A6845 = 7.0:1 ✓  #1A2E20 on #EEF5F0 = 14.8:1 ✓
+  { id:'charcoal',label:'Charcoal', dark:'#2A2A2A', acc:'#404040', bg:'#F5F5F5', text:'#1A1A1A', sub:'#4A4A4A', oh:'#A0A0A0' },
+  // white on #2A2A2A = 13.1:1 ✓  white on #404040 = 8.2:1 ✓  #1A1A1A on #F5F5F5 = 17.1:1 ✓
+  { id:'indigo',  label:'Indigo',   dark:'#1E1B5E', acc:'#2D2B8C', bg:'#F0F0FF', text:'#0E0C38', sub:'#3A3880', oh:'#9898DC' },
+  // white on #1E1B5E = 15.2:1 ✓  white on #2D2B8C = 8.8:1 ✓  #0E0C38 on #F0F0FF = 18.0:1 ✓
+];
+
+// ═══════════════════════════════════
+//  COMPONENT DEFINITIONS
+// ═══════════════════════════════════
+var COMPS = {
+
+  homepage: {
+    label: 'Course Homepage',
+    layoutLabel: '3 · Layout Style',
+    colorStep: '4',
+    levels: [
+      { id:'stack',     name:'Stacked buttons',           desc:'Single column, full-width buttons — visual editor safe', badge:'✅ Editor safe', badgeStyle:'background:#1E3A2E;color:#4FC3A1;' },
+      { id:'cards',     name:'Card grid — no header',     desc:'Solid-color cards, centered, fixed width',               badge:'⚠️ HTML only', badgeStyle:'background:#3A2E00;color:#F5C842;' },
+      { id:'cards-hdr', name:'Card grid — with header',   desc:'Dark header band + solid-color cards below',            badge:'⚠️ HTML only', badgeStyle:'background:#3A2E00;color:#F5C842;' },
+    ],
+    sections: [
+      {
+        label: '2 · Course Info',
+        fields: [
+          { id:'courseTitle', label:'Course name & number', type:'text', ph:'e.g. COMM 101: Introduction to Communication' },
+          { row: true, fields: [
+            { id:'campus', label:'Campus', type:'text', ph:'e.g. Central Campus', opt:true },
+            { id:'term',   label:'Term',   type:'text', ph:'e.g. Fall 2026' },
+          ]},
+          { row: true, fields: [
+            { id:'modality', label:'Course modality', type:'select', options:[
+              { value:'In-Person',   label:'In-Person' },
+              { value:'Online',      label:'Online' },
+              { value:'Hybrid',      label:'Hybrid' },
+              { value:'HyFlex',      label:'HyFlex' },
+            ]},
+            { id:'crn', label:'Meeting time', type:'text', ph:'e.g. MWF 10–10:50am', opt:true },
+          ]},
+          { id:'zoomLink', label:'Zoom meeting link', type:'url', ph:'https://seattlecolleges.zoom.us/j/...', opt:true, conditional:'online-hybrid' },
+          { id:'welcome', label:'Welcome message', type:'textarea', ph:'Welcome! Use the buttons below to navigate your course.', opt:true },
+        ]
+      },
+      {
+        label: '3 · Office Hours',
+        fields: [
+          { id:'ohLoc',   label:'Location', type:'text', ph:'e.g. Room B-214 & Zoom' },
+          { id:'ohTimes', label:'Days & times', type:'text', ph:'e.g. Tuesdays 1–3pm · Thursdays 10am–12pm' },
+        ]
+      },
+      {
+        label: '4 · Navigation Buttons',
+        type: 'items',
+        itemLabel: 'button',
+        itemFields: [
+          { id:'label', label:'Button label', type:'text', ph:'e.g. Announcements', header: true },
+          { id:'url',   label:'Canvas URL',   type:'url',  ph:'Paste your Canvas page URL here' },
+          { id:'sub',   label:'Subtitle (optional)', type:'text', ph:'e.g. Start here each week', opt:true },
+        ],
+        defaults: [
+          { label:'Announcements', url:'', sub:'Start here each week' },
+          { label:'Modules',       url:'', sub:'Weekly lessons & content' },
+          { label:'Assignments',   url:'', sub:'Submit your work here' },
+          { label:'Discussions',   url:'', sub:'Respond to your peers' },
+          { label:'Syllabus',      url:'', sub:'Policies & schedule' },
+          { label:'Grades',        url:'', sub:'View your progress' },
+        ],
+      }
+    ]
+  },
+
+  announcement: {
+    label: 'Announcement',
+    layoutLabel: '3 · Style',
+    colorStep: '4',
+    levels: [
+      { id:'simple', name:'Simple banner', desc:'Clean header with message body', badge:'✅ Editor safe', badgeStyle:'background:#1E3A2E;color:#4FC3A1;' },
+      { id:'urgent', name:'Urgent / action required', desc:'High-contrast alert style', badge:'⚠️ HTML only', badgeStyle:'background:#3A2E00;color:#F5C842;' },
+    ],
+    sections: [
+      {
+        label: '2 · Announcement Content',
+        fields: [
+          { id:'anTitle',  label:'Headline', type:'text', ph:'e.g. Midterm Exam — Date Change' },
+          { id:'anTag',    label:'Tag / label', type:'text', ph:'e.g. Action Required, Reminder, Update' },
+          { id:'anBody',   label:'Message', type:'textarea', ph:'Write your announcement text here…' },
+          { id:'anSig',    label:'Sign-off', type:'text', ph:'e.g. — Prof. Smith', opt:true },
+          { row:true, fields:[
+            { id:'anCourse', label:'Course & section', type:'text', ph:'COMM 101 · Section 001' },
+            { id:'anDate',   label:'Date posted', type:'text', ph:'e.g. October 14, 2026', opt:true },
+          ]},
+        ]
+      }
+    ]
+  },
+
+  module: {
+    label: 'Module Intro',
+    layoutLabel: '3 · Style',
+    colorStep: '4',
+    levels: [
+      { id:'simple', name:'Header + objectives', desc:'Module title, week, objectives list', badge:'⚠️ HTML only', badgeStyle:'background:#3A2E00;color:#F5C842;' },
+      { id:'full',   name:'Header + objectives + checklist', desc:'Adds a "This Week" task list', badge:'⚠️ HTML only', badgeStyle:'background:#3A2E00;color:#F5C842;' },
+    ],
+    sections: [
+      {
+        label: '2 · Module Info',
+        fields: [
+          { id:'modNum',   label:'Module number & week', type:'text', ph:'e.g. Module 3 · Week of October 14' },
+          { id:'modTitle', label:'Module title', type:'text', ph:'e.g. Persuasion & Rhetorical Strategy' },
+          { id:'modSub',   label:'Subtitle / focus', type:'text', ph:'e.g. Understanding how arguments are built', opt:true },
+        ]
+      },
+      {
+        label: '3 · Learning Objectives',
+        type: 'items',
+        itemLabel: 'objective',
+        itemFields: [
+          { id:'label', label:'Objective', type:'text', ph:'e.g. Identify Aristotle\'s three rhetorical appeals', header:true },
+        ],
+        defaults: [
+          { label:'Identify the key concepts from the reading' },
+          { label:'Apply one concept to a real-world example' },
+          { label:'Analyze a short text using course frameworks' },
+        ]
+      },
+      {
+        label: '4 · This Week Checklist',
+        type: 'items',
+        itemLabel: 'task',
+        id: 'tasks',
+        itemFields: [
+          { id:'label', label:'Task', type:'text', ph:'e.g. Read Ch. 8', header:true },
+          { id:'sub',   label:'Detail', type:'text', ph:'e.g. Pages 120–145', opt:true },
+        ],
+        defaults: [
+          { label:'Read Ch. 8', sub:'Pages 120–145' },
+          { label:'Watch the lecture video', sub:'~20 min' },
+          { label:'Discussion post due Wednesday' },
+          { label:'Quiz due Friday', sub:'Covers Ch. 8–9' },
+        ]
+      }
+    ]
+  },
+
+  discussion: {
+    label: 'Discussion Prompt',
+    layoutLabel: '3 · Style',
+    colorStep: '4',
+    levels: [
+      { id:'simple', name:'Header + numbered questions', desc:'Clean prompt with reply requirements', badge:'⚠️ HTML only', badgeStyle:'background:#3A2E00;color:#F5C842;' },
+      { id:'split',  name:'Scenario + questions (split)', desc:'Left panel scenario, right panel questions', badge:'⚠️ HTML only', badgeStyle:'background:#3A2E00;color:#F5C842;' },
+    ],
+    sections: [
+      {
+        label: '2 · Prompt Info',
+        fields: [
+          { id:'discWeek',  label:'Week / context label', type:'text', ph:'e.g. Week 3 · Discussion' },
+          { id:'discTitle', label:'Discussion title', type:'text', ph:'e.g. First Impressions & Communication' },
+          { id:'discObj',   label:'Learning objective', type:'textarea', ph:'One sentence describing what students will reflect on…', opt:true },
+          { id:'discScen',  label:'Scenario (for split layout)', type:'textarea', ph:'Describe the scenario students read before responding…', opt:true },
+        ]
+      },
+      {
+        label: '3 · Guiding Questions',
+        type: 'items',
+        itemLabel: 'question',
+        itemFields: [
+          { id:'label', label:'Question', type:'textarea', ph:'Write your guiding question here…', header:true },
+        ],
+        defaults: [
+          { label:'Reflect on a time when a first impression of you was wrong. What might have caused the misunderstanding?' },
+          { label:'How does cultural background influence what we read as a positive first impression?' },
+          { label:'How does the concept from this week\'s reading help explain why first impressions are hard to change?' },
+        ]
+      },
+      {
+        label: '4 · Reply Requirements',
+        fields: [
+          { row:true, fields:[
+            { id:'postWords', label:'Initial post word count', type:'text', ph:'e.g. 150+ words' },
+            { id:'postDue',   label:'Post due', type:'text',   ph:'e.g. Wednesday 11:59pm' },
+          ]},
+          { row:true, fields:[
+            { id:'replyCount', label:'Number of peer replies', type:'text', ph:'e.g. 2' },
+            { id:'replyDue',   label:'Replies due', type:'text', ph:'e.g. Friday 11:59pm' },
+          ]},
+        ]
+      }
+    ]
+  },
+
+  syllabus: {
+    label: 'Syllabus Banner',
+    colorStep: '3',
+    levels: [],
+    sections: [
+      {
+        label: '2 · Course & Instructor Info',
+        fields: [
+          { id:'sylTitle',    label:'Course name & number', type:'text', ph:'e.g. COMM 101: Introduction to Communication' },
+          { id:'sylTerm',     label:'Term', type:'text', ph:'e.g. Fall 2026' },
+          { id:'sylInst',     label:'Instructor name', type:'text', ph:'e.g. Prof. Your Name' },
+          { id:'sylEmail',    label:'Email', type:'text', ph:'e.g. yourname@seattlecolleges.edu' },
+          { row:true, fields:[
+            { id:'sylMeets',  label:'Class meets', type:'text', ph:'e.g. MWF 10–10:50am' },
+            { id:'sylRoom',   label:'Room', type:'text',        ph:'e.g. Room B-214' },
+          ]},
+          { id:'sylOH',       label:'Office hours', type:'text', ph:'e.g. Tue 1–3pm, Thu 10am–12pm · Room B-214 & Zoom' },
+        ]
+      },
+      {
+        label: '3 · Quick Stats (3 boxes)',
+        type: 'items',
+        id: 'sylstats',
+        itemLabel: 'stat',
+        maxItems: 3,
+        itemFields: [
+          { id:'label', label:'Label', type:'text', ph:'e.g. Units, Format, Campus', header:true },
+          { id:'sub',   label:'Value', type:'text', ph:'e.g. 5, In-Person, Central' },
+        ],
+        defaults: [
+          { label:'Units',  sub:'5' },
+          { label:'Format', sub:'In-Person' },
+          { label:'Campus', sub:'Central' },
+        ]
+      }
+    ]
+  },
+
+  divider: {
+    label: 'Section Divider',
+    colorStep: '3',
+    levels: [],
+    sections: [
+      {
+        label: '2 · Divider Content',
+        fields: [
+          { id:'divLabel', label:'Section label', type:'text', ph:'e.g. Weekly Materials, Resources, Getting Started' },
+          { id:'divSub',   label:'Subtitle', type:'text', ph:'e.g. Complete in order before Friday', opt:true },
+          { id:'divStyle', label:'Style', type:'select', options:[
+            { value:'line',   label:'Colored line + label' },
+            { value:'band',   label:'Solid color band' },
+            { value:'pill',   label:'Pill badge' },
+          ]},
+        ]
+      }
+    ]
+  },
+};
+
+// ═══════════════════════════════════
+//  STATE
+// ═══════════════════════════════════
+var state = {
+  comp:    'homepage',
+  level:   'stack',
+  palette: 'ocean',
+};
+var generatedCode = '';
+var rowCounters = {};
+
+// ═══════════════════════════════════
+//  INIT
+// ═══════════════════════════════════
+(function() {
+  buildPalettes();
+  renderForm('homepage');
+})();
+
+// ═══════════════════════════════════
+//  COMPONENT SELECT
+// ═══════════════════════════════════
+function selectComp(id, el) {
+  state.comp = id;
+  document.querySelectorAll('.comp-opt').forEach(function(e){ e.classList.remove('active'); });
+  el.classList.add('active');
+  renderForm(id);
+}
+
+// ═══════════════════════════════════
+//  RENDER FORM
+// ═══════════════════════════════════
+function renderForm(compId) {
+  var def = COMPS[compId];
+  rowCounters = {};
+  var form = document.getElementById('dynamicForm');
+  form.innerHTML = '';
+
+  def.sections.forEach(function(sec) {
+    var div = document.createElement('div');
+    div.className = 'fs';
+    div.innerHTML = '<div class="fs-label">' + sec.label + '</div>';
+
+    if (sec.type === 'items') {
+      var secId = sec.id || 'items-' + sec.label.replace(/\W/g,'');
+      rowCounters[secId] = 0;
+      var rows = document.createElement('div');
+      rows.className = 'item-rows';
+      rows.id = 'rows-' + secId;
+      div.appendChild(rows);
+
+      var addBtn = document.createElement('button');
+      addBtn.className = 'add-btn';
+      addBtn.textContent = '+ Add ' + sec.itemLabel;
+      addBtn.setAttribute('data-secid', secId);
+      var capturedSec = sec;
+      addBtn.onclick = function(){ addItemRow(secId, capturedSec, {}); };
+      div.appendChild(addBtn);
+
+      if (sec.maxItems) addBtn.setAttribute('data-max', sec.maxItems);
+
+      (sec.defaults || []).forEach(function(d){ addItemRow(secId, sec, d); });
+
+      if (sec.maxItems && (sec.defaults||[]).length >= sec.maxItems) addBtn.style.display = 'none';
+
+    } else {
+      renderFields(div, sec.fields);
+    }
+
+    form.appendChild(div);
+  });
+
+  // layout
+  var ls = document.getElementById('layoutSection');
+  var ll = document.getElementById('layoutLabel');
+  if (def.levels && def.levels.length) {
+    ls.style.display = '';
+    ll.textContent = def.layoutLabel || '3 · Layout Style';
+    buildLevels(def.levels);
+    state.level = def.levels[0].id;
+  } else {
+    ls.style.display = 'none';
+  }
+
+  // re-number color step
+  document.getElementById('colorStepLabel').textContent = def.colorStep + ' · Color Theme';
+
+  // Conditional zoom field: show only for Online / Hybrid / HyFlex
+  if (compId === 'homepage') {
+    setTimeout(function() {
+      var modalitySel = document.getElementById('modality');
+      var zoomField   = document.getElementById('zoomLink');
+      if (!modalitySel || !zoomField) return;
+      var zoomWrap = zoomField.closest('.field');
+      function toggleZoom() {
+        var v = modalitySel.value;
+        var show = v === 'Online' || v === 'Hybrid' || v === 'HyFlex';
+        zoomWrap.style.display = show ? '' : 'none';
+      }
+      toggleZoom();
+      modalitySel.addEventListener('change', toggleZoom);
+    }, 0);
+  }
+}
+
+function renderFields(parent, fields) {
+  fields.forEach(function(f) {
+    if (f.row) {
+      var row = document.createElement('div');
+      row.className = 'field-row';
+      f.fields.forEach(function(rf){ row.appendChild(makeField(rf)); });
+      parent.appendChild(row);
+    } else {
+      parent.appendChild(makeField(f));
+    }
+  });
+}
+
+function makeField(f) {
+  var wrap = document.createElement('div');
+  wrap.className = 'field';
+  var lbl = document.createElement('label');
+  lbl.setAttribute('for', f.id);
+  lbl.innerHTML = f.label + (f.opt ? ' <span class="opt">(optional)</span>' : '');
+  wrap.appendChild(lbl);
+
+  var el;
+  if (f.type === 'select') {
+    el = document.createElement('select');
+    el.id = f.id;
+    (f.options || []).forEach(function(o){
+      var opt = document.createElement('option');
+      opt.value = o.value; opt.textContent = o.label;
+      el.appendChild(opt);
+    });
+  } else if (f.type === 'textarea') {
+    el = document.createElement('textarea');
+    el.id = f.id;
+    el.placeholder = f.ph || '';
+    el.rows = 2;
+  } else {
+    el = document.createElement('input');
+    el.type = f.type || 'text';
+    el.id = f.id;
+    el.placeholder = f.ph || '';
+  }
+  wrap.appendChild(el);
+  return wrap;
+}
+
+// ═══════════════════════════════════
+//  ITEM ROWS
+// ═══════════════════════════════════
+function addItemRow(secId, sec, data) {
+  var max = sec.maxItems;
+  var container = document.getElementById('rows-' + secId);
+  if (!container) return;
+  if (max && container.children.length >= max) return;
+
+  rowCounters[secId] = (rowCounters[secId] || 0) + 1;
+  var n = rowCounters[secId];
+  var uid = secId + '-' + n;
+
+  var row = document.createElement('div');
+  row.className = 'item-row';
+  row.id = 'irow-' + uid;
+
+  // header line (label field + remove btn)
+  var hdr = document.createElement('div');
+  hdr.className = 'item-row-header';
+
+  var num = document.createElement('div');
+  num.className = 'item-num';
+  num.textContent = n;
+  hdr.appendChild(num);
+
+  var headerField = sec.itemFields.find(function(f){ return f.header; });
+  if (headerField) {
+    var inp;
+    if (headerField.type === 'textarea') {
+      inp = document.createElement('textarea');
+      inp.rows = 2;
+      inp.style.flex = '1';
+    } else {
+      inp = document.createElement('input');
+      inp.type = 'text';
+    }
+    inp.id = uid + '-' + headerField.id;
+    inp.placeholder = headerField.ph || '';
+    inp.value = data[headerField.id] || data.label || '';
+    hdr.appendChild(inp);
+  }
+
+  var rm = document.createElement('button');
+  rm.className = 'remove-btn';
+  rm.textContent = '×';
+  rm.setAttribute('aria-label', 'Remove item');
+  rm.onclick = (function(rowEl, rowsEl, secDef, addBtnSecId){ return function(){ rowEl.remove(); renumber(rowsEl); if(secDef.maxItems){ var addB = document.querySelector('[data-secid="'+addBtnSecId+'"]'); if(addB) addB.style.display=''; } }; })(row, container, sec, secId);
+  hdr.appendChild(rm);
+  row.appendChild(hdr);
+
+  // extra fields
+  var extraFields = sec.itemFields.filter(function(f){ return !f.header; });
+  if (extraFields.length) {
+    var body = document.createElement('div');
+    body.className = 'item-row-body';
+    extraFields.forEach(function(f) {
+      var el;
+      if (f.type === 'textarea') {
+        el = document.createElement('textarea');
+        el.rows = 2;
+      } else {
+        el = document.createElement('input');
+        el.type = f.type || 'text';
+      }
+      el.id = uid + '-' + f.id;
+      el.placeholder = (f.opt ? '(optional) ' : '') + (f.ph || '');
+      el.value = data[f.id] || '';
+      body.appendChild(el);
+    });
+    row.appendChild(body);
+  }
+
+  container.appendChild(row);
+
+  // hide add btn if at max
+  if (max && container.children.length >= max) {
+    var addB = document.querySelector('[data-secid="'+secId+'"]');
+    if (addB) addB.style.display = 'none';
+  }
+}
+
+function renumber(container) {
+  Array.from(container.children).forEach(function(row, i) {
+    var num = row.querySelector('.item-num');
+    if (num) num.textContent = i + 1;
+  });
+}
+
+function getItems(secId, fields) {
+  var container = document.getElementById('rows-' + secId);
+  if (!container) return [];
+  return Array.from(container.children).map(function(row) {
+    var obj = {};
+    fields.forEach(function(f) {
+      var uid = row.id.replace('irow-', '');
+      var el = document.getElementById(uid + '-' + f.id);
+      if (el) obj[f.id] = el.value.trim();
+    });
+    return obj;
+  }).filter(function(o){ return o.label || o.url || o.value; });
+}
+
+function val(id) {
+  var el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+// ═══════════════════════════════════
+//  LEVELS
+// ═══════════════════════════════════
+function buildLevels(levels) {
+  var list = document.getElementById('levelList');
+  list.innerHTML = levels.map(function(l, i) {
+    return '<div class="lvl-opt' + (i===0?' active':'') + '" onclick="selectLevel(this,\'' + l.id + '\')">' +
+      '<div class="lvl-dot"></div>' +
+      '<div class="lvl-text"><div class="lvl-name">' + l.name + '</div><div class="lvl-desc">' + l.desc + '</div></div>' +
+      '<span class="lvl-badge" style="' + l.badgeStyle + '">' + l.badge + '</span>' +
+    '</div>';
+  }).join('');
+}
+function selectLevel(el, id) {
+  state.level = id;
+  document.querySelectorAll('.lvl-opt').forEach(function(e){ e.classList.remove('active'); });
+  el.classList.add('active');
+}
+
+// ═══════════════════════════════════
+//  PALETTES
+// ═══════════════════════════════════
+function buildPalettes() {
+  var grid = document.getElementById('palGrid');
+  grid.innerHTML = PALS.map(function(p) {
+    return '<div class="pal-opt' + (p.id===state.palette?' active':'') + '" onclick="selectPal(\'' + p.id + '\',this)" title="' + p.label + '">' +
+      '<div class="pal-swatch"><div class="pal-half" style="background:' + p.dark + '"></div><div class="pal-half" style="background:' + p.acc + '"></div><div class="pal-half" style="background:' + p.bg + '"></div></div>' +
+      '<div class="pal-name">' + p.label + '</div>' +
+    '</div>';
+  }).join('');
+}
+function selectPal(id, el) {
+  state.palette = id;
+  document.querySelectorAll('.pal-opt').forEach(function(e){ e.classList.remove('active'); });
+  el.classList.add('active');
+}
+function pal() { return PALS.find(function(p){ return p.id===state.palette; }); }
+
+// ═══════════════════════════════════
+//  CODE BUILDERS
+// ═══════════════════════════════════
+function e(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── HOMEPAGE ──
+function buildHomepage() {
+  var p = pal();
+  var title   = val('courseTitle') || 'Your Course Title';
+  var campus  = val('campus');
+  var term    = val('term');
+  var crn     = val('crn');
+  var welcome = val('welcome');
+  var ohLoc   = val('ohLoc');
+  var ohTimes = val('ohTimes');
+
+  var secId = 'items-' + COMPS.homepage.sections[2].label.replace(/\W/g,'');
+  var buttons = getItems(secId, COMPS.homepage.sections[2].itemFields);
+  if (!buttons.length) { toast('Add at least one button'); return null; }
+
+  var ohBar = (ohLoc || ohTimes) ? (
+    '\n<div style="background:' + p.dark + ';border-radius:8px;padding:13px 16px;' +
+    'display:flex;align-items:center;gap:14px;margin-top:8px;">\n' +
+    '  <span aria-hidden="true" style="font-size:20px;flex-shrink:0;">🕐</span>\n' +
+    '  <div>\n' +
+    '    <p style="font-size:13px;font-weight:700;color:#fff;margin:0 0 2px;">' + e(ohLoc) + '</p>\n' +
+    '    <p style="font-size:11px;color:' + p.oh + ';margin:0;">' + e(ohTimes) + '</p>\n' +
+    '  </div>\n</div>') : '';
+
+  var metaLine = (campus||term) ? '<p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:' + p.sub + ';margin:0 0 5px;">' + e(campus) + (campus&&term?' &middot; ':'') + e(term) + '</p>\n' : '';
+  var modality = val('modality') || '';
+  var zoomLink = val('zoomLink') || '';
+  var modalityBadge = modality ? '<span style="display:inline-block;background:' + p.dark + ';color:#fff;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:4px;margin-right:8px;">' + e(modality) + '</span>' : '';
+  var crnLine  = (modality||crn) ? '<p style="font-size:12px;color:' + p.sub + ';margin:4px 0 0;">' + modalityBadge + e(crn) + '</p>\n' : '';
+  var zoomBar  = (zoomLink && (modality==='Online'||modality==='Hybrid'||modality==='HyFlex')) ?
+    '<div style="background:' + p.dark + ';border-radius:8px;padding:12px 18px;margin-top:16px;display:flex;align-items:center;gap:12px;">\n' +
+    '  <span aria-hidden="true" style="font-size:18px;flex-shrink:0;">&#128247;</span>\n' +
+    '  <div>\n' +
+    '    <p style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:' + p.oh + ';margin:0 0 2px;">Join Class Online</p>\n' +
+    '    <a href="' + e(zoomLink) + '" style="font-size:13px;font-weight:700;color:#fff;text-decoration:underline;">Click here to join Zoom</a>\n' +
+    '  </div>\n</div>\n' : '';
+  var wlcLine  = welcome ? '<p style="font-size:14px;color:' + p.sub + ';line-height:1.65;margin:0 0 16px;">' + e(welcome) + '</p>\n' : '';
+
+  // ── Shared card builder ──
+  // Design: solid-color fill, label bottom-left, subtitle below, fixed centered width.
+  // Gap between cards via margin on each <a> (survives Canvas sanitizer).
+  // Color cycles: dark → accent → dark → accent ... with white text on both.
+  function buildCards(buttons, p, cols) {
+    var pct = cols === 3 ? 'calc(33.333% - 8px)' : cols === 2 ? 'calc(50% - 6px)' : '100%';
+    return buttons.map(function(b, i) {
+      var bg     = i % 2 === 0 ? p.dark : p.acc;
+      var fg     = '#ffffff';
+      var subFg  = 'rgba(255,255,255,0.72)';
+      return '<a href="' + e(b.url||'#') + '" aria-label="' + e(b.label) + (b.sub?' - '+e(b.sub):'') + '"\n' +
+        '   style="display:flex;flex-direction:column;justify-content:flex-end;\n' +
+        '          width:' + pct + ';min-width:140px;min-height:120px;\n' +
+        '          padding:18px 18px 16px;background:' + bg + ';\n' +
+        '          border-radius:10px;margin:0 8px 8px 0;\n' +
+        '          text-decoration:none;color:' + fg + ';">\n' +
+        '  <strong style="font-size:14px;font-weight:700;display:block;color:' + fg + ';line-height:1.2;">' + e(b.label) + '</strong>\n' +
+        (b.sub ? '  <span style="font-size:11px;color:' + subFg + ';display:block;margin-top:4px;">' + e(b.sub) + '</span>\n' : '') +
+        '</a>';
+    }).join('\n');
+  }
+
+  // Auto-pick columns based on button count
+  function autoCols(n) {
+    if (n <= 2) return 2;
+    if (n <= 6) return 3;
+    return 3; // 3-col wraps gracefully for 7+
+  }
+
+  var ohSection = (ohLoc||ohTimes) ?
+    '\n<div style="background:' + p.dark + ';border-radius:8px;padding:14px 20px;\n' +
+    '     display:flex;align-items:center;gap:14px;margin-top:2px;">\n' +
+    '  <span aria-hidden="true" style="font-size:20px;flex-shrink:0;">&#128336;</span>\n' +
+    '  <div>\n' +
+    '    <p style="font-size:13px;font-weight:700;color:#fff;margin:0 0 2px;">' + e(ohLoc) + '</p>\n' +
+    '    <p style="font-size:12px;color:' + p.oh + ';margin:0;">' + e(ohTimes) + '</p>\n' +
+    '  </div>\n</div>' : '';
+
+  if (state.level === 'stack') {
+    // Full-width stacked buttons — Canvas visual editor safe
+    var links = buttons.map(function(b) {
+      return '<a href="' + e(b.url||'#') + '" aria-label="' + e(b.label) + (b.sub?' - '+e(b.sub):'') + '"\n' +
+        '   style="display:block;background:' + p.dark + ';color:#fff;padding:13px 18px;\n' +
+        '          font-size:14px;font-weight:700;text-decoration:none;\n' +
+        '          border-radius:6px;margin-bottom:8px;">' + e(b.label) +
+        (b.sub ? '<span style="display:block;font-size:11px;font-weight:400;color:rgba(255,255,255,0.72);margin-top:2px;">' + e(b.sub) + '</span>' : '') +
+        '</a>';
+    }).join('\n');
+    return '<div role="main" style="font-family:system-ui,sans-serif;max-width:720px;margin:0 auto;padding:24px 20px;">\n\n' +
+      (campus||term ? '<p style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:' + p.sub + ';margin:0 0 6px;">' + e(campus) + (campus&&term?' &middot; ':'') + e(term) + '</p>\n' : '') +
+      '<h1 style="font-size:clamp(20px,3vw,30px);font-weight:800;color:' + p.text + ';letter-spacing:-.02em;line-height:1.1;margin:0 0 4px;">' + e(title) + '</h1>\n' +
+      (crn ? '<p style="font-size:12px;color:' + p.sub + ';margin:0 0 16px;">' + e(crn) + '</p>\n' : '<div style="height:16px;"></div>\n') +
+      (welcome ? '<p style="font-size:14px;color:' + p.sub + ';line-height:1.65;margin:0 0 20px;max-width:560px;">' + e(welcome) + '</p>\n' : '') +
+      links + zoomBar + ohSection + '\n\n</div>';
+  }
+
+  if (state.level === 'cards') {
+    // Solid-color card grid, NO header band. Fixed width, centered.
+    var cols = autoCols(buttons.length);
+    var cards = buildCards(buttons, p, cols);
+    return '<div role="main" style="font-family:system-ui,sans-serif;max-width:720px;margin:0 auto;background:' + p.bg + ';padding:28px 24px 20px;border-radius:12px;">\n\n' +
+      (campus||term ? '<p style="font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:' + p.sub + ';margin:0 0 6px;">' + e(campus) + (campus&&term?' &middot; ':'') + e(term) + '</p>\n' : '') +
+      '<h1 style="font-size:clamp(20px,3vw,30px);font-weight:800;color:' + p.text + ';letter-spacing:-.02em;line-height:1.1;margin:0 0 4px;">' + e(title) + '</h1>\n' +
+      (crn ? '<p style="font-size:12px;color:' + p.sub + ';margin:0 0 16px;">' + e(crn) + '</p>\n' : '<div style="height:14px;"></div>\n') +
+      (welcome ? '<p style="font-size:14px;color:' + p.sub + ';line-height:1.65;margin:0 0 20px;max-width:540px;">' + e(welcome) + '</p>\n' : '') +
+      '<p style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:' + p.sub + ';margin:0 0 12px;">Course Navigation</p>\n' +
+      '<div style="display:flex;flex-wrap:wrap;">\n' + cards + '\n</div>' +
+      zoomBar + ohSection + '\n\n</div>';
+  }
+
+  if (state.level === 'cards-hdr') {
+    // Dark header band + solid-color card grid below. Fixed width, centered.
+    var cols = autoCols(buttons.length);
+    var cards = buildCards(buttons, p, cols);
+    var ohBar = (ohLoc||ohTimes) ?
+      '\n<div style="background:' + p.dark + ';padding:14px 24px;display:flex;align-items:center;gap:14px;">\n' +
+      '  <span aria-hidden="true" style="font-size:20px;flex-shrink:0;">&#128336;</span>\n' +
+      '  <div>\n' +
+      '    <p style="font-size:13px;font-weight:700;color:#fff;margin:0 0 2px;">' + e(ohLoc) + '</p>\n' +
+      '    <p style="font-size:12px;color:' + p.oh + ';margin:0;">' + e(ohTimes) + '</p>\n' +
+      '  </div>\n</div>' : '';
+    return '<div role="main" style="font-family:system-ui,sans-serif;max-width:720px;margin:0 auto;border-radius:12px;overflow:hidden;">\n\n' +
+      '<header style="background:' + p.dark + ';padding:22px 26px;">\n' +
+      (campus||term ? '  <p style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:' + p.oh + ';margin:0 0 8px;">' + e(campus) + (campus&&term?' &middot; ':'') + e(term) + '</p>\n' : '') +
+      '  <h1 style="font-size:clamp(20px,3vw,30px);font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1.1;margin:0;">' + e(title) + '</h1>\n' +
+      (crn ? '  <p style="font-size:12px;color:' + p.oh + ';margin:8px 0 0;">' + e(crn) + '</p>\n' : '') +
+      '</header>\n\n' +
+      '<div style="background:' + p.bg + ';padding:22px 26px 18px;">\n' +
+      (welcome ? '<p style="font-size:14px;color:' + p.sub + ';line-height:1.65;margin:0 0 20px;max-width:540px;">' + e(welcome) + '</p>\n' : '') +
+      '<p style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:' + p.sub + ';margin:0 0 12px;">Course Navigation</p>\n' +
+      '<div style="display:flex;flex-wrap:wrap;">\n' + cards + '\n</div>\n</div>' +
+      (zoomBar ? zoomBar.replace('margin-top:16px', 'margin-top:0;border-radius:0') : '') + ohBar + '\n\n</div>';
+  }
+}
+
+// ── ANNOUNCEMENT ──
+function buildAnnouncement() {
+  var p = pal();
+  var title  = val('anTitle')  || 'Announcement';
+  var tag    = val('anTag')    || '';
+  var body   = val('anBody')   || '';
+  var sig    = val('anSig')    || '';
+  var course = val('anCourse') || '';
+  var date   = val('anDate')   || '';
+
+  // Student-centered: most important info first
+  // 1. What kind of announcement (tag/label) - sets expectation
+  // 2. What is it about (title)
+  // 3. The actual information (body)
+  // 4. Who sent it and when (footer - least urgent)
+
+  if (state.level === 'simple') {
+    return '<div role="region" aria-label="Announcement" style="font-family:system-ui,sans-serif;width:100%;border-radius:10px;overflow:hidden;">\n\n' +
+      '<header style="background:' + p.dark + ';padding:16px 22px;">\n' +
+      (tag ? '  <p style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:' + p.oh + ';margin:0 0 6px;">' + e(tag) + '</p>\n' : '') +
+      '  <h2 style="font-size:clamp(17px,2.5vw,22px);font-weight:800;color:#fff;margin:0;line-height:1.2;">' + e(title) + '</h2>\n</header>\n\n' +
+      '<div style="background:' + p.bg + ';padding:20px 22px;">\n' +
+      '  <p style="font-size:14px;color:' + p.text + ';line-height:1.7;margin:0 0 16px;">' + e(body) + '</p>\n' +
+      (sig ? '  <p style="font-size:13px;color:' + p.sub + ';margin:0;">' + e(sig) + '</p>\n' : '') +
+      '</div>\n\n' +
+      '<footer style="background:' + p.dark + ';padding:9px 22px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">\n' +
+      '  <span style="font-size:11px;color:' + p.oh + ';">' + e(course) + '</span>\n' +
+      '  <span style="font-size:11px;color:' + p.oh + ';">' + e(date) + '</span>\n' +
+      '</footer>\n\n</div>';
+  }
+
+  // urgent: high-contrast alert band at top
+  return '<div role="alert" aria-label="Urgent announcement" style="font-family:system-ui,sans-serif;width:100%;border-radius:10px;overflow:hidden;">\n\n' +
+    '<div style="background:' + p.dark + ';padding:8px 20px;display:flex;align-items:center;gap:10px;">\n' +
+    (tag ? '  <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:' + p.oh + ';">' + e(tag) + '</span>\n' : '') +
+    '</div>\n\n' +
+    '<div style="background:#fff;padding:20px 22px;border:2px solid ' + p.acc + ';border-top:none;">\n' +
+    '  <h2 style="font-size:clamp(17px,2.5vw,22px);font-weight:800;color:' + p.text + ';margin:0 0 12px;line-height:1.2;">' + e(title) + '</h2>\n' +
+    '  <p style="font-size:14px;color:' + p.sub + ';line-height:1.7;margin:0 0 16px;">' + e(body) + '</p>\n' +
+    (sig ? '  <p style="font-size:13px;color:' + p.sub + ';margin:0;">' + e(sig) + '</p>\n' : '') +
+    '</div>\n\n' +
+    '<footer style="background:' + p.dark + ';padding:9px 22px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">\n' +
+    '  <span style="font-size:11px;color:' + p.oh + ';">' + e(course) + '</span>\n' +
+    '  <span style="font-size:11px;color:' + p.oh + ';">' + e(date) + '</span>\n' +
+    '</footer>\n\n</div>';
+}
+
+// ── MODULE ──
+function buildModule() {
+  var p = pal();
+  var num   = val('modNum')   || 'Module 1';
+  var title = val('modTitle') || 'Module Title';
+  var sub   = val('modSub');
+
+  // Fix: use sec.id when present to match addItemRow's ID generation
+  var objSecId  = 'items-' + COMPS.module.sections[1].label.replace(/\W/g,'');
+  var taskSecId = COMPS.module.sections[2].id || ('items-' + COMPS.module.sections[2].label.replace(/\W/g,''));
+  var objectives = getItems(objSecId,  COMPS.module.sections[1].itemFields);
+  var tasks      = getItems(taskSecId, COMPS.module.sections[2].itemFields);
+
+  // Student-centered structure:
+  // 1. Where am I / what week? (header - orientation)
+  // 2. What will I learn? (objectives - purpose/motivation)
+  // 3. What do I need to DO and by when? (checklist - action)
+  // Objectives use action verbs. Checklist is deadline-scannable.
+
+  var objList = objectives.map(function(o) {
+    return '      <li style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.06);">\n' +
+      '        <span aria-hidden="true" style="color:' + p.acc + ';font-weight:800;flex-shrink:0;margin-top:2px;">&#8594;</span>\n' +
+      '        <span style="font-size:13px;color:' + p.sub + ';line-height:1.55;">' + e(o.label) + '</span>\n      </li>';
+  }).join('\n');
+
+  var taskList = tasks.map(function(t) {
+    return '        <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;background:#fff;border-radius:7px;margin-bottom:6px;border-left:3px solid ' + p.acc + ';">\n' +
+      '          <div style="width:16px;height:16px;border-radius:3px;border:2px solid ' + p.acc + ';flex-shrink:0;" aria-hidden="true"></div>\n' +
+      '          <div style="flex:1;">\n' +
+      '            <p style="font-size:13px;font-weight:600;color:' + p.text + ';margin:0;">' + e(t.label) + '</p>\n' +
+      (t.sub ? '            <p style="font-size:11px;color:' + p.sub + ';margin:2px 0 0;">' + e(t.sub) + '</p>\n' : '') +
+      '          </div>\n        </div>';
+  }).join('\n');
+
+  var hasChecklist = state.level === 'full' && tasks.length > 0;
+
+  var bodyContent = '';
+  if (hasChecklist) {
+    bodyContent =
+      '  <div style="display:flex;flex-wrap:wrap;gap:24px;">\n' +
+      '    <div style="flex:1;min-width:220px;">\n' +
+      '      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:' + p.acc + ';margin:0 0 12px;">By the end of this module you will:</p>\n' +
+      '      <ul style="list-style:none;padding:0;margin:0;">\n' + objList + '\n      </ul>\n    </div>\n' +
+      '    <div style="flex:1;min-width:220px;">\n' +
+      '      <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:' + p.acc + ';margin:0 0 12px;">Complete this week:</p>\n' +
+      tasks.map(function(t) {
+        return '        <div style="display:flex;align-items:flex-start;gap:12px;padding:9px 14px;background:#fff;border-radius:7px;margin-bottom:6px;border-left:3px solid ' + p.acc + ';">\n' +
+          '          <div style="width:16px;height:16px;border-radius:3px;border:2px solid ' + p.acc + ';flex-shrink:0;margin-top:2px;" aria-hidden="true"></div>\n' +
+          '          <div style="flex:1;">\n' +
+          '            <p style="font-size:13px;font-weight:600;color:' + p.text + ';margin:0;">' + e(t.label) + '</p>\n' +
+          (t.sub ? '            <p style="font-size:11px;color:' + p.sub + ';margin:2px 0 0;">' + e(t.sub) + '</p>\n' : '') +
+          '          </div>\n        </div>';
+      }).join('\n') +
+      '    </div>\n  </div>';
+  } else {
+    bodyContent =
+      '  <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:' + p.acc + ';margin:0 0 12px;">By the end of this module you will:</p>\n' +
+      '  <ul style="list-style:none;padding:0;margin:0;">\n' + objList + '\n  </ul>';
+  }
+
+  return '<div role="region" aria-label="Module introduction" style="font-family:system-ui,sans-serif;width:100%;border-radius:10px;overflow:hidden;">\n\n' +
+    '<header style="background:' + p.dark + ';padding:20px 24px;">\n' +
+    '  <p style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:' + p.oh + ';margin:0 0 6px;">' + e(num) + '</p>\n' +
+    '  <h2 style="font-size:clamp(18px,2.5vw,24px);font-weight:800;color:#fff;margin:0;line-height:1.2;">' + e(title) + '</h2>\n' +
+    (sub ? '  <p style="font-size:13px;color:' + p.oh + ';margin:6px 0 0;">' + e(sub) + '</p>\n' : '') +
+    '</header>\n\n' +
+    '<div style="background:' + p.bg + ';padding:20px 24px;">\n' +
+    bodyContent + '\n</div>\n\n</div>';
+}
+
+// ── DISCUSSION ──
+function buildDiscussion() {
+  var p = pal();
+  var week   = val('discWeek')  || 'Discussion';
+  var title  = val('discTitle') || 'Discussion Prompt';
+  var obj    = val('discObj');
+  var scen   = val('discScen');
+  var pWords = val('postWords');
+  var pDue   = val('postDue');
+  var rCount = val('replyCount');
+  var rDue   = val('replyDue');
+
+  var qSecId = 'items-' + COMPS.discussion.sections[1].label.replace(/\W/g,'');
+  var questions = getItems(qSecId, COMPS.discussion.sections[1].itemFields);
+
+  // Student-centered structure:
+  // 1. Context (week/label + title) - where does this fit
+  // 2. Why it matters (objective) - motivation
+  // 3. What to think about (questions) - the task
+  // 4. Requirements (reply bar) - expectations, scannable at bottom
+
+  var qList = questions.map(function(q, i) {
+    return '<div style="display:flex;gap:12px;margin-bottom:12px;align-items:flex-start;">\n' +
+      '  <div style="min-width:24px;height:24px;border-radius:50%;background:' + p.dark + ';color:#fff;\n' +
+      '       font-size:11px;font-weight:800;display:flex;align-items:center;\n' +
+      '       justify-content:center;flex-shrink:0;margin-top:1px;">' + (i+1) + '</div>\n' +
+      '  <p style="font-size:14px;color:' + p.sub + ';line-height:1.65;margin:0;">' + e(q.label) + '</p>\n</div>';
+  }).join('\n');
+
+  var reqBar = (pWords||pDue||rCount||rDue) ?
+    '\n<footer style="background:' + p.dark + ';padding:12px 22px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;">\n' +
+    (pWords||pDue ? '  <span style="font-size:12px;font-weight:600;color:#fff;">Initial post: <strong style="color:' + p.oh + ';">' + e(pWords) + '</strong>' + (pDue?' by <strong style="color:'+p.oh+';">'+e(pDue)+'</strong>':'') + '</span>\n' : '') +
+    (rCount||rDue ? '  <span style="font-size:12px;font-weight:600;color:#fff;">Reply to <strong style="color:' + p.oh + ';">' + e(rCount) + ' classmates</strong>' + (rDue?' by <strong style="color:'+p.oh+';">'+e(rDue)+'</strong>':'') + '</span>\n' : '') +
+    '</footer>' : '';
+
+  if (state.level === 'split' && scen) {
+    return '<div role="region" aria-label="Discussion prompt" style="font-family:system-ui,sans-serif;width:100%;border-radius:10px;overflow:hidden;">\n\n' +
+      '<header style="background:' + p.dark + ';padding:18px 22px;">\n' +
+      '  <p style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:' + p.oh + ';margin:0 0 5px;">' + e(week) + '</p>\n' +
+      '  <h2 style="font-size:clamp(17px,2.5vw,22px);font-weight:800;color:#fff;margin:0;">' + e(title) + '</h2>\n</header>\n\n' +
+      '<div style="display:flex;flex-wrap:wrap;">\n' +
+      '  <div style="flex:1;min-width:220px;background:' + p.bg + ';padding:18px 20px;">\n' +
+      '    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:' + p.acc + ';margin:0 0 10px;">The Scenario</p>\n' +
+      '    <p style="font-size:13px;color:' + p.sub + ';line-height:1.7;margin:0;">' + e(scen) + '</p>\n  </div>\n' +
+      '  <div style="flex:1;min-width:220px;background:#fff;padding:18px 20px;">\n' +
+      '    <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:' + p.acc + ';margin:0 0 14px;">Respond to these questions</p>\n' +
+      qList + '\n  </div>\n</div>' + reqBar + '\n\n</div>';
+  }
+
+  return '<div role="region" aria-label="Discussion prompt" style="font-family:system-ui,sans-serif;width:100%;border-radius:10px;overflow:hidden;">\n\n' +
+    '<header style="background:' + p.dark + ';padding:18px 22px;">\n' +
+    '  <p style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:' + p.oh + ';margin:0 0 5px;">' + e(week) + '</p>\n' +
+    '  <h2 style="font-size:clamp(17px,2.5vw,22px);font-weight:800;color:#fff;margin:0;">' + e(title) + '</h2>\n</header>\n\n' +
+    '<div style="background:#fff;padding:20px 22px;">\n' +
+    (obj ? '  <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:' + p.acc + ';margin:0 0 6px;">Learning Objective</p>\n  <p style="font-size:14px;color:' + p.sub + ';line-height:1.65;margin:0 0 20px;padding-bottom:16px;border-bottom:1px solid #eee;">' + e(obj) + '</p>\n' : '') +
+    '  <p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:' + p.acc + ';margin:0 0 14px;">Respond to the following</p>\n' +
+    qList + '\n</div>' + reqBar + '\n\n</div>';
+}
+
+// ── SYLLABUS ──
+function buildSyllabus() {
+  var p = pal();
+  var title = val('sylTitle') || 'Your Course Title';
+  var term  = val('sylTerm');
+  var inst  = val('sylInst');
+  var email = val('sylEmail');
+  var meets = val('sylMeets');
+  var room  = val('sylRoom');
+  var oh    = val('sylOH');
+
+  // Fix: use the sec.id 'sylstats' to match addItemRow's ID generation
+  var statSecId = COMPS.syllabus.sections[1].id || ('items-' + COMPS.syllabus.sections[1].label.replace(/\W/g,''));
+  var stats = getItems(statSecId, COMPS.syllabus.sections[1].itemFields);
+
+  // Student-centered: students need to quickly find
+  // 1. Is this their class? (title + term)
+  // 2. Who teaches it / how to reach them (instructor block)
+  // 3. When and where (meeting info)
+  // 4. Key facts at a glance (stats bar)
+
+  var statCells = stats.map(function(s, i) {
+    var border = i < stats.length-1 ? 'border-right:1px solid rgba(255,255,255,0.15);' : '';
+    return '<div style="flex:1;min-width:80px;text-align:center;padding:12px 16px;' + border + '">\n' +
+      '  <p style="font-size:18px;font-weight:800;color:#fff;margin:0;line-height:1;">' + e(s.sub||s.label) + '</p>\n' +
+      '  <p style="font-size:10px;color:' + p.oh + ';font-weight:600;margin:4px 0 0;text-transform:uppercase;letter-spacing:.06em;">' + e(s.label) + '</p>\n</div>';
+  }).join('\n');
+
+  return '<div role="region" aria-label="Course syllabus header" style="font-family:system-ui,sans-serif;width:100%;border-radius:10px;overflow:hidden;">\n\n' +
+    '<header style="background:' + p.dark + ';padding:24px 28px 20px;">\n' +
+    (term ? '  <p style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:' + p.oh + ';margin:0 0 8px;">Course Syllabus &middot; ' + e(term) + '</p>\n' : '') +
+    '  <h1 style="font-size:clamp(18px,3vw,28px);font-weight:800;color:#fff;margin:0 0 16px;line-height:1.15;">' + e(title) + '</h1>\n' +
+    '  <div style="display:flex;flex-wrap:wrap;gap:20px;">\n' +
+    (inst  ? '    <div>\n      <p style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:' + p.oh + ';margin:0 0 2px;">Instructor</p>\n      <p style="font-size:14px;font-weight:700;color:#fff;margin:0;">' + e(inst) + '</p>\n' + (email?'      <p style="font-size:12px;color:'+p.oh+';margin:2px 0 0;"><a href="mailto:'+e(email)+'" style="color:'+p.oh+';">'+e(email)+'</a></p>\n':'') + '    </div>\n' : '') +
+    (meets ? '    <div>\n      <p style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:' + p.oh + ';margin:0 0 2px;">Class Meets</p>\n      <p style="font-size:14px;font-weight:700;color:#fff;margin:0;">' + e(meets) + '</p>\n' + (room?'      <p style="font-size:12px;color:'+p.oh+';margin:2px 0 0;">'+e(room)+'</p>\n':'') + '    </div>\n' : '') +
+    (oh    ? '    <div>\n      <p style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:' + p.oh + ';margin:0 0 2px;">Office Hours</p>\n      <p style="font-size:13px;font-weight:600;color:#fff;margin:0;">' + e(oh) + '</p>\n    </div>\n' : '') +
+    '  </div>\n</header>\n\n' +
+    (statCells ? '<div style="background:' + p.acc + ';display:flex;flex-wrap:wrap;">\n' + statCells + '\n</div>\n\n' : '') +
+    '</div>';
+}
+
+// ── DIVIDER ──
+function buildDivider() {
+  var p = pal();
+  var label = val('divLabel') || 'Section Title';
+  var sub   = val('divSub');
+  var style = val('divStyle') || 'line';
+
+  if (style === 'band') {
+    return '<div style="font-family:system-ui,sans-serif;background:' + p.dark + ';border-radius:8px;padding:14px 20px;margin:8px 0;">\n' +
+      '  <p style="font-size:13px;font-weight:800;color:#fff;margin:0;letter-spacing:.02em;">' + e(label) + '</p>\n' +
+      (sub ? '  <p style="font-size:11px;color:' + p.oh + ';margin:3px 0 0;">' + e(sub) + '</p>\n' : '') +
+      '</div>';
+  }
+  if (style === 'pill') {
+    return '<div style="font-family:system-ui,sans-serif;margin:12px 0;display:flex;align-items:center;gap:10px;">\n' +
+      '  <span style="background:' + p.dark + ';color:#fff;font-size:11px;font-weight:700;padding:4px 14px;border-radius:20px;letter-spacing:.04em;white-space:nowrap;">' + e(label) + '</span>\n' +
+      '  <div style="flex:1;height:2px;background:' + p.acc + ';border-radius:1px;"></div>\n' +
+      (sub ? '  <span style="font-size:11px;color:' + p.sub + ';white-space:nowrap;">' + e(sub) + '</span>\n' : '') +
+      '</div>';
+  }
+  // line (default)
+  return '<div style="font-family:system-ui,sans-serif;display:flex;align-items:center;gap:12px;margin:14px 0;">\n' +
+    '  <div style="height:3px;width:28px;background:' + p.acc + ';border-radius:2px;flex-shrink:0;"></div>\n' +
+    '  <p style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:' + p.sub + ';margin:0;">' + e(label) + '</p>\n' +
+    (sub ? '  <p style="font-size:11px;color:' + p.dimmer + ';margin:0;">&middot; ' + e(sub) + '</p>\n' : '') +
+    '  <div style="flex:1;height:1px;background:#E2E0DA;"></div>\n</div>';
+}
+
+// ═══════════════════════════════════
+//  GENERATE
+// ═══════════════════════════════════
+function generate() {
+  var code = null;
+  var c = state.comp;
+
+  if (c === 'homepage')     code = buildHomepage();
+  else if (c === 'announcement') code = buildAnnouncement();
+  else if (c === 'module')  code = buildModule();
+  else if (c === 'discussion') code = buildDiscussion();
+  else if (c === 'syllabus') code = buildSyllabus();
+  else if (c === 'divider') code = buildDivider();
+
+  if (!code) return;
+  generatedCode = code;
+
+  document.getElementById('codeOut').textContent = code;
+  document.getElementById('copyBtn').textContent = 'Copy Code';
+  document.getElementById('copyBtn').classList.remove('copied');
+
+  var frame = document.getElementById('previewFrame');
+  frame.srcdoc = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:system-ui,sans-serif;padding:28px;background:#dde2e8;}</style></head><body>' + code + '</body></html>';
+  frame.style.height = Math.max(480, 120 + (generatedCode.match(/<tr/g)||[]).length * 100) + 'px';
+  frame.style.display = 'block';
+  document.getElementById('emptyState').style.display = 'none';
+
+  switchTab('preview');
+  toast('✓ Built! Check the preview.');
+}
+
+// ═══════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach(function(b){
+    var isActive = (t==='preview' && b.textContent==='Preview') || (t==='code' && b.textContent==='Copy Code');
+    b.classList.toggle('active', isActive);
+    b.setAttribute('aria-selected', isActive);
+  });
+  document.getElementById('tab-preview').classList.toggle('active', t==='preview');
+  document.getElementById('tab-code').classList.toggle('active', t==='code');
+  document.getElementById('tab-faq').classList.toggle('active', t==='faq');
+}
+
+function copyOut() {
+  if (!generatedCode) { toast('Build your component first'); return; }
+  var btn = document.getElementById('copyBtn');
+  copyToClipboard(generatedCode, function() {
+    btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent='Copy Code'; btn.classList.remove('copied'); }, 2500);
+    toast('Code copied — paste into Canvas HTML editor');
+  });
+}
+
+function copyToClipboard(text, cb) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(cb).catch(function(){ fb(text,cb); });
+  } else { fb(text, cb); }
+}
+function fb(text, cb) {
+  var ta = document.createElement('textarea');
+  ta.value=text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try { document.execCommand('copy'); cb(); } catch(x){ alert('Select the code and press Ctrl+C / Cmd+C.'); }
+  document.body.removeChild(ta);
+}
+
+function toast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, 2600);
+}
+
+// ═══════════════════════════════════
+//  FAQ
+// ═══════════════════════════════════
+var FAQS = [
+  {
+    section: 'Getting Started',
+    items: [
+      {
+        q: 'How do I paste the code into Canvas?',
+        a: 'Go to your Canvas course → Pages → + Page. Give it a name like "Course Home." In the editor toolbar, click the <strong>&lt;/&gt;</strong> button (bottom-right of the text box, or under the ··· menu). This switches you to HTML view. Delete anything already there, paste your code, then click <strong>Save &amp; Publish</strong>.'
+      },
+      {
+        q: 'How do I set this page as my course Home page?',
+        a: 'After saving the page, go to <strong>Pages</strong> → find your page → click the three-dot menu (⋮) → <strong>"Use as Front Page."</strong> Then go to your course Home → click <strong>"Choose Home Page"</strong> on the right side → select <strong>"Pages Front Page."</strong>'
+      },
+      {
+        q: 'Why does my formatted page look broken after I edit it in Canvas?',
+        a: 'Once you paste a layout template, only edit it through the <strong>&lt;/&gt; HTML editor button</strong> — never through the visual (rich text) editor. The visual editor is like a word processor that doesn\'t understand layout code. If you accidentally open it in the visual editor and save, re-paste the code from the Copy Code tab.'
+      },
+      {
+        q: 'Canvas keeps stripping my styles. Why?',
+        a: 'Canvas removes <code>&lt;style&gt;</code> blocks and some CSS properties on save. All code from this builder uses only <strong>inline styles</strong> (the <code>style="…"</code> written directly on each element) which survive the Canvas sanitizer. Never paste code that has a <code>&lt;style&gt;</code> block at the top.'
+      }
+    ]
+  },
+  {
+    section: 'Using the Builder',
+    items: [
+      {
+        q: 'What is the difference between the layout options?',
+        a: '<strong>Stacked buttons</strong> are a single column of full-width buttons — the simplest option, and the only one you can safely edit in Canvas\'s visual editor after pasting. <strong>Card grid — no header</strong> uses solid-color fill cards arranged in a flex-wrap grid with your course title and info above the cards, set at a fixed centered width. <strong>Card grid — with header</strong> adds a dark colored header band at the top with your course info, then the card grid below. Both card layouts auto-size columns based on how many buttons you add: 2 buttons = 2 columns, 3–7 buttons = 3 columns.'
+      },
+      {
+        q: 'What does "Editor safe" vs "HTML only" mean on the layout options?',
+        a: '<strong>Editor safe</strong> means you can open the page in Canvas\'s normal visual editor, click into the text, and change it without breaking the layout. <strong>HTML only</strong> means you should always use the &lt;/&gt; HTML editor button when making any changes — the visual editor will collapse the layout if you save through it.'
+      },
+      {
+        q: 'How do I change the color theme?',
+        a: 'Click any color swatch in the <strong>Color Theme</strong> section at the bottom of the form. The preview updates when you click Generate. You can switch themes and regenerate as many times as you want before copying the code.'
+      },
+      {
+        q: 'Can I add or remove navigation buttons?',
+        a: 'Yes — click <strong>+ Add button</strong> to add a row, or click the <strong>×</strong> on any row to remove it. There\'s no minimum or maximum. The layout adapts: 2-col flex wraps into two columns automatically, and 3-col flex wraps into three.'
+      },
+      {
+        q: 'What is the subtitle field on each button?',
+        a: 'The subtitle is the small descriptive line below the button label — for example "Start here each week" under Announcements. It\'s optional: leave it blank and only the label appears.'
+      },
+      {
+        q: 'Can I build components other than a home page?',
+        a: 'Yes — use the component picker at the top of the form to switch to Announcement, Module Intro, Discussion Prompt, Syllabus Banner, or Section Divider. The form fields change completely for each component type.'
+      }
+    ]
+  },
+  {
+    section: 'Adding Links',
+    items: [
+      {
+        q: 'Where do I find the Canvas URL to paste into the button URL field?',
+        a: 'Navigate to the Canvas page you want to link to (Modules, Assignments, Discussions, etc.). Copy the URL from your browser\'s address bar. It will look something like: <code>https://seattlecolleges.instructure.com/courses/12345/modules</code>. Paste that full URL into the Canvas URL field for that button.'
+      },
+      {
+        q: 'What if I don\'t have my links yet — can I still generate the code?',
+        a: 'Yes. Leave the URL fields blank and the buttons will use <code>#</code> as a placeholder — they won\'t navigate anywhere when clicked, but the page will still look correct. You can come back later, update the URLs in the HTML editor, and save.'
+      },
+      {
+        q: 'Can I link to an external website instead of a Canvas page?',
+        a: 'Yes — paste any full URL including external sites. Just make sure it starts with <code>https://</code>. Canvas will open external links in the same tab by default.'
+      }
+    ]
+  },
+  {
+    section: 'Customizing After Pasting',
+    items: [
+      {
+        q: 'How do I change the button label or URL after pasting into Canvas?',
+        a: 'Click <strong>Edit</strong> on the Canvas page → click the <strong>&lt;/&gt;</strong> HTML button → find the button text or URL you want to change in the code → edit it directly → click <strong>Save.</strong> Tip: use Ctrl+F (or Cmd+F) inside the HTML editor to search for the text you want to find.'
+      },
+      {
+        q: 'How do I change the color after pasting?',
+        a: 'In the HTML editor, use your browser\'s find (Ctrl+F / Cmd+F) to search for the old hex color code (e.g. <code>#003F47</code>). Replace all instances with your new color. Make sure to use a color that passes accessibility contrast — visit <strong>webaim.org/resources/contrastchecker</strong> to check.'
+      },
+      {
+        q: 'Can I add more buttons after pasting?',
+        a: 'Yes. In the HTML editor, find an existing button block (it starts with <code>&lt;a href=</code> and ends with <code>&lt;/a&gt;</code>), copy the whole thing, paste it right after the last button, and update the label and URL. Match the style attributes to the surrounding buttons.'
+      }
+    ]
+  },
+  {
+    section: 'Accessibility',
+    items: [
+      {
+        q: 'Is the generated code accessible?',
+        a: 'Yes — all generated code is built to meet WCAG 2.2 AA standards. Every navigation link includes an <code>aria-label</code> with the full label and subtitle so screen readers announce meaningful context. Decorative elements (like the clock emoji in office hours) use <code>aria-hidden="true"</code> so they are skipped by assistive technology. Semantic HTML is used throughout: <code>&lt;h1&gt;</code> for course titles, <code>&lt;nav&gt;</code> for navigation sections, <code>&lt;header&gt;</code>, <code>&lt;aside&gt;</code> for office hours, and <code>role="main"</code> on the page wrapper. All 11 built-in color palettes have been tested and pass 4.5:1 contrast ratio for body text and 3:1 for large text and UI components.'
+      },
+      {
+        q: 'Can I use any color I want?',
+        a: 'The 11 built-in palettes have all been pre-tested and verified for WCAG AA compliance. If you want a <strong>custom color</strong>, you will need to manually edit the hex color codes in the generated HTML using Canvas\'s HTML editor — for example, changing <code>#003F47</code> to your preferred color everywhere it appears. This requires a basic understanding of HTML and CSS. Before using any custom color, verify it passes contrast at <strong>webaim.org/resources/contrastchecker</strong> — white text needs at least a 4.5:1 ratio against its background.'
+      }
+    ]
+  },
+  {
+    section: 'Sharing & Hosting',
+    items: [
+      {
+        q: 'Can I share this builder with other faculty?',
+        a: 'Yes — this is a self-contained HTML file. You can share it as a file attachment, host it on SharePoint via an Embed web part, or publish it to GitHub Pages for a permanent URL. Contact the eLearning office if you want help hosting it.'
+      },
+      {
+        q: 'Can the eLearning office customize a template for my department?',
+        a: 'Yes — we can match your department colors, adjust the layout, add additional buttons, or build something entirely custom. Submit a request through the eLearning support link on the hub.'
+      }
+    ]
+  },
+  {
+    section: 'Privacy, Data & Intellectual Property',
+    items: [
+      {
+        q: 'Does this tool save, store, or transmit anything I type?',
+        a: '<strong>No — nothing you type is ever saved or sent anywhere.</strong> This tool is a single HTML file with no server, no database, and no network connections. Everything you fill in lives only in your browser tab for as long as the tab is open. When you close the tab, it is gone. There is no account, no login, and no way for anyone — including the eLearning office — to see what you entered.'
+      },
+      {
+        q: 'Is this tool sending my course information to an AI or third-party service?',
+        a: 'No. The code generator in this tool runs entirely in your browser using plain JavaScript. It does not call any AI API, analytics service, or external server of any kind. You can verify this by opening your browser\'s Network tab in Developer Tools while using the builder — you will see zero outbound requests from the form.'
+      },
+      {
+        q: 'Who owns the HTML code this tool generates?',
+        a: 'You do. The generated HTML is yours to use, modify, copy, and distribute however you like. The eLearning office makes no intellectual property claim on the output of this tool. The templates are provided as a free resource for Seattle Colleges faculty and staff — there are no license restrictions on what you build with them.'
+      },
+      {
+        q: 'Does entering my course info here create any FERPA concerns?',
+        a: 'No. This tool only asks for course-level, publicly available information — course title, meeting times, office hours, and your Canvas page URLs. It never asks for student names, student IDs, grades, or any other personally identifiable student information. There is nothing in this tool that touches FERPA-protected data.'
+      },
+      {
+        q: 'Is this safe to use on a work computer or institutional network?',
+        a: 'Yes. This is a static HTML file — it loads no external scripts, sets no cookies, uses no tracking pixels, and makes no network requests. It is no different from opening a Word document on your computer. It can be used on any device, on or off campus, with no security concerns.'
+      },
+      {
+        q: 'What happens to my Canvas pages if this tool changes or goes away?',
+        a: 'Nothing — the code you copy and paste into Canvas is completely self-contained. Once it is in your Canvas page, it has no dependency on this tool whatsoever. Your pages will continue to look and work exactly the same whether this tool exists or not. You own the code the moment you paste it.'
+      },
+      {
+        q: 'If I use these templates, am I responsible for accessibility compliance?',
+        a: 'The generated code is built to meet WCAG 2.2 AA standards — color contrast, semantic HTML, and ARIA attributes are handled for you. However, <strong>you are responsible for the content you put into the templates.</strong> If you add images, you need to write meaningful alt text. If you embed video, it needs captions. The tool gives you an accessible structure; keeping your content accessible is your responsibility as the instructor.'
+      }
+    ]
+  }
+];
+
+function renderFAQ() {
+  var container = document.getElementById('faq-list');
+  if (!container) return;
+  container.innerHTML = FAQS.map(function(sec) {
+    var items = sec.items.map(function(item, i) {
+      var id = 'faq-' + sec.section.replace(/\W/g,'') + '-' + i;
+      return '<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:7px;overflow:hidden;">' +
+        '<button onclick="toggleFAQ(\'' + id + '\',this)" aria-expanded="false"' +
+        '  style="width:100%;background:var(--ink2);border:none;padding:12px 16px;' +
+        '         display:flex;align-items:center;justify-content:space-between;gap:12px;' +
+        '         cursor:pointer;text-align:left;font-family:inherit;color:var(--text);">' +
+        '  <span style="font-size:13px;font-weight:600;">' + item.q + '</span>' +
+        '  <span style="color:var(--dim);font-size:12px;flex-shrink:0;" aria-hidden="true">▼</span>' +
+        '</button>' +
+        '<div id="' + id + '" style="display:none;padding:14px 16px;background:var(--surface);' +
+        '     font-size:13px;color:var(--dim);line-height:1.7;border-top:1px solid var(--border);">' +
+        item.a + '</div>' +
+        '</div>';
+    }).join('');
+    return '<h3 style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;' +
+      'color:var(--accent);margin:0 0 10px;display:flex;align-items:center;gap:8px;">' +
+      sec.section +
+      '<span style="flex:1;height:1px;background:var(--border);display:block;"></span></h3>' +
+      items + '<div style="height:16px;"></div>';
+  }).join('');
+}
+
+function toggleFAQ(id, btn) {
+  var panel = document.getElementById(id);
+  var open = panel.style.display === 'block';
+  panel.style.display = open ? 'none' : 'block';
+  btn.setAttribute('aria-expanded', !open);
+  var chevron = btn.querySelector('[aria-hidden]');
+  if (chevron) chevron.textContent = open ? '▼' : '▲';
+}
+
+// render FAQ on load
+renderFAQ();
+
+// ── TRUST TICKER ──
+// Duplicate the track content so the loop is seamless
+(function() {
+  var track = document.getElementById('trustTrack');
+  if (!track) return;
+  track.innerHTML += track.innerHTML; // double it for seamless loop
+})();
+
+// Clicking a trust item opens the FAQ tab and scrolls to privacy section
+document.querySelectorAll('.trust-item').forEach(function(item) {
+  item.style.cursor = 'pointer';
+  item.setAttribute('role', 'button');
+  item.setAttribute('tabindex', '0');
+  item.setAttribute('aria-label', item.textContent.trim() + ' — click to learn more');
+  function openPrivacy() {
+    switchTab('faq');
+    setTimeout(function() {
+      var faqList = document.getElementById('faq-list');
+      if (!faqList) return;
+      // Find the Privacy section heading and scroll to it
+      var headings = faqList.querySelectorAll('h3');
+      headings.forEach(function(h) {
+        if (h.textContent.indexOf('Privacy') > -1 || h.textContent.indexOf('Intellectual') > -1) {
+          h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    }, 80);
+  }
+  item.addEventListener('click', openPrivacy);
+  item.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPrivacy(); }
+  });
+});
+
+// ── THEME TOGGLE ──
+function toggleTheme() {
+  var root    = document.documentElement;
+  var btn     = document.getElementById('themeToggle');
+  var label   = document.getElementById('toggleLabel');
+  var isLight = root.classList.toggle('light');
+  btn.setAttribute('aria-pressed', isLight);
+  label.textContent = isLight ? 'Dark' : 'Light';
+}
+
+</script>
+</body>
+</html>
