@@ -3,7 +3,7 @@
 
 A free, browser-based tool that lets faculty build accessible, Canvas-ready HTML components without writing a single line of code. Fill out a form, pick a style and color theme, click Build — then copy the generated code directly into Canvas.
 
-🔗 **[Open the Builder](https://seattlecolleges-elearning.github.io/canvas-builder/)**
+🔗 **[Open the Builder](https://jessehdz.github.io/canvas-comp-builder/)**
 
 ---
 
