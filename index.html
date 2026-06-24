@@ -614,6 +614,7 @@ var COMPS = {
             ]},
             { id:'crn', label:'Meeting time', type:'text', ph:'e.g. MWF 10–10:50am', opt:true },
           ]},
+          { id:'location', label:'Class location', type:'text', ph:'e.g. Room B-214, Georgetown Hall', opt:true },
           { id:'zoomLink', label:'Zoom meeting link', type:'url', ph:'https://seattlecolleges.zoom.us/j/...', opt:true, conditional:'online-hybrid' },
           { id:'welcome', label:'Welcome message', type:'textarea', ph:'Welcome! Use the buttons below to navigate your course.', opt:true },
         ]
@@ -1155,9 +1156,10 @@ function buildHomepage() {
 
   var metaLine = (campus||term) ? '<p style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:' + p.sub + ';margin:0 0 5px;">' + e(campus) + (campus&&term?' &middot; ':'') + e(term) + '</p>\n' : '';
   var modality = val('modality') || '';
+  var location = val('location') || '';
   var zoomLink = val('zoomLink') || '';
   var modalityBadge = modality ? '<span style="display:inline-block;background:' + p.dark + ';color:#fff;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:4px;margin-right:8px;">' + e(modality) + '</span>' : '';
-  var crnLine  = (modality||crn) ? '<p style="font-size:12px;color:' + p.sub + ';margin:4px 0 0;">' + modalityBadge + e(crn) + '</p>\n' : '';
+  var crnLine  = (modality||crn||location) ? '<p style="font-size:12px;color:' + p.sub + ';margin:4px 0 0;">' + modalityBadge + e(crn) + (location ? ' &middot; ' + e(location) : '') + '</p>\n' : '';
   var zoomBar  = (zoomLink && (modality==='Online'||modality==='Hybrid'||modality==='HyFlex')) ?
     '<div style="background:' + p.dark + ';border-radius:8px;padding:12px 18px;margin-top:16px;display:flex;align-items:center;gap:12px;">\n' +
     '  <span aria-hidden="true" style="font-size:18px;flex-shrink:0;">&#128247;</span>\n' +
